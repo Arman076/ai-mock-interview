@@ -114,31 +114,63 @@ const Agent = ({
     }
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
-  const handleCall = async () => {
-    setCallStatus(CallStatus.CONNECTING);
+// provided by chatgpt, minorly modified
+const handleCall = async () => {
+  setCallStatus(CallStatus.CONNECTING);
 
-    if (type === "generate") {
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-        variableValues: {
-          username: userName,
-          userid: userId,
-        },
-      });
-    } else {
-      let formattedQuestions = "";
-      if (questions) {
-        formattedQuestions = questions
-          .map((question) => `- ${question}`)
-          .join("\n");
-      }
-
-      await vapi.start(interviewer, {
-        variableValues: {
-          questions: formattedQuestions,
-        },
-      });
+  if (type === "generate") {
+    await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+      variableValues: {
+        username: userName,
+        userid: userId,
+      },
+      clientMessages: [],
+      serverMessages: [],
+    });
+  } else {
+    let formattedQuestions = "";
+    if (questions) {
+      formattedQuestions = questions.map((q) => `- ${q}`).join("\n");
     }
-  };
+
+    await vapi.start(interviewer, {
+      variableValues: {
+        questions: formattedQuestions,
+      },
+      clientMessages: [],
+      serverMessages: [],
+    });
+  }
+};
+
+
+  //original content
+
+  // const handleCall = async () => {
+  //   setCallStatus(CallStatus.CONNECTING);
+
+  //   if (type === "generate") {
+  //     await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+  //       variableValues: {
+  //         username: userName,
+  //         userid: userId,
+  //       },
+  //     });
+  //   } else {
+  //     let formattedQuestions = "";
+  //     if (questions) {
+  //       formattedQuestions = questions
+  //         .map((question) => `- ${question}`)
+  //         .join("\n");
+  //     }
+
+  //     await vapi.start(interviewer, {
+  //       variableValues: {
+  //         questions: formattedQuestions,
+  //       },
+  //     });
+  //   }
+  // };
 
   const handleDisconnect = () => {
     setCallStatus(CallStatus.FINISHED);
