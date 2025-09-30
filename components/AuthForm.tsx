@@ -41,59 +41,120 @@ const AuthForm = ({ type }: { type: FormType }) => {
     },
   });
 
+  // const onSubmit = async (data: z.infer<typeof formSchema>) => {
+  //   try {
+  //     if (type === "sign-up") {
+  //       const { name, email, password } = data;
+
+  //       const userCredential = await createUserWithEmailAndPassword(
+  //         auth,
+  //         email,
+  //         password
+  //       );
+
+  //       const result = await signUp({
+  //         uid: userCredential.user.uid,
+  //         name: name!,
+  //         email,
+  //         password,
+  //       });
+
+  //       if (!result?.success) {
+  //         toast.error(result ?.message);
+  //         return;
+  //       }
+
+  //       // Automatically sign in after successful sign up
+  //       const idToken = await userCredential.user.getIdToken();
+  //       if (!idToken) {
+  //         toast.error("Sign in Failed. Please try again.");
+  //         return;
+  //       }
+  //       await signIn({
+  //         email,
+  //         idToken,
+  //       });
+  //       toast.success("Account created and signed in successfully.");
+  //       router.push("/sign-in");
+        
+  //     } else {
+  //       const { email, password } = data;
+
+  //       const userCredential = await signInWithEmailAndPassword(
+  //         auth,
+  //         email,
+  //         password
+  //       );
+
+  //       const idToken = await userCredential.user.getIdToken();
+  //       if (!idToken) {
+  //         toast.error("Sign in Failed. Please try again.");
+  //         return;
+  //       }
+
+  //       await signIn({
+  //         email,
+  //         idToken,
+  //       });
+
+  //       toast.success("Signed in successfully.");
+  //       router.push("/");
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //     toast.error(`There was an error: ${error}`);
+  //   }
+  // };
+
+  //suggested by chatgpt to avoid code repetition
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    try {
-      if (type === "sign-up") {
-        const { name, email, password } = data;
+  try {
+    if (type === "sign-up") {
+      const { name, email, password } = data;
 
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-        const result = await signUp({
-          uid: userCredential.user.uid,
-          name: name!,
-          email,
-          password,
-        });
+      // Save user to Firestore
+      const result = await signUp({
+        uid: userCredential.user.uid,
+        name: name!,
+        email,
+        password,
+      });
 
-        if (!result.success) {
-          toast.error(result.message);
-          return;
-        }
-
-        toast.success("Account created successfully. Please sign in.");
-        router.push("/sign-in");
-      } else {
-        const { email, password } = data;
-
-        const userCredential = await signInWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
-
-        const idToken = await userCredential.user.getIdToken();
-        if (!idToken) {
-          toast.error("Sign in Failed. Please try again.");
-          return;
-        }
-
-        await signIn({
-          email,
-          idToken,
-        });
-
-        toast.success("Signed in successfully.");
-        router.push("/");
+      if (!result?.success) {
+        toast.error(result?.message);
+        return;
       }
-    } catch (error) {
-      console.log(error);
-      toast.error(`There was an error: ${error}`);
+
+      // Do NOT auto sign-in here
+      toast.success("Account created successfully. Please sign in.");
+      router.push("/sign-in"); // Redirect to login page
+
+    } else {
+      const { email, password } = data;
+
+      // Sign in user
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      const idToken = await userCredential.user.getIdToken();
+      if (!idToken) {
+        toast.error("Sign in Failed. Please try again.");
+        return;
+      }
+
+      await signIn({ email, idToken });
+
+      toast.success("Signed in successfully.");
+      router.push("/"); // Redirect to home
     }
-  };
+  } catch (error: any) {
+    console.log(error);
+    toast.error(`There was an error: ${error.message || error}`);
+  }
+};
+
 
   const isSignIn = type === "sign-in";
 

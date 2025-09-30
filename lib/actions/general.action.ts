@@ -16,27 +16,50 @@ export async function createFeedback(params: CreateFeedbackParams) {
           `- ${sentence.role}: ${sentence.content}\n`
       )
       .join("");
+// orginal this on
+    // const { object } = await generateObject({
+    //   model: google("gemini-2.0-flash-001", {
+    //     structuredOutputs: false,
+    //   }),
+    //   schema: feedbackSchema,
+    //   prompt: `
+    //     You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
+    //     Transcript:
+    //     ${formattedTranscript}
 
-    const { object } = await generateObject({
-      model: google("gemini-2.0-flash-001", {
-        structuredOutputs: false,
-      }),
-      schema: feedbackSchema,
-      prompt: `
-        You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
-        Transcript:
-        ${formattedTranscript}
+    //     Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
+    //     - **Communication Skills**: Clarity, articulation, structured responses.
+    //     - **Technical Knowledge**: Understanding of key concepts for the role.
+    //     - **Problem-Solving**: Ability to analyze problems and propose solutions.
+    //     - **Cultural & Role Fit**: Alignment with company values and job role.
+    //     - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+    //     `,
+    //   system:
+    //     "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
+    // });
 
-        Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
-        - **Communication Skills**: Clarity, articulation, structured responses.
-        - **Technical Knowledge**: Understanding of key concepts for the role.
-        - **Problem-Solving**: Ability to analyze problems and propose solutions.
-        - **Cultural & Role Fit**: Alignment with company values and job role.
-        - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
-        `,
-      system:
-        "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
-    });
+    // suggested by chatgpt
+  const { object } = await generateObject({
+  model: google("gemini-2.0-flash-001"),
+  schema: feedbackSchema,
+  // structuredOutputs: true, // ✅ put it here
+  prompt: `
+    You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
+    Transcript:
+    ${formattedTranscript}
+
+    Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
+    - **Communication Skills**: Clarity, articulation, structured responses.
+    - **Technical Knowledge**: Understanding of key concepts for the role.
+    - **Problem-Solving**: Ability to analyze problems and propose solutions.
+    - **Cultural & Role Fit**: Alignment with company values and job role.
+    - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
+  `,
+  system:
+    "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
+});
+
+
 
     const feedback = {
       interviewId: interviewId,
@@ -90,24 +113,54 @@ export async function getFeedbackByInterviewId(
   return { id: feedbackDoc.id, ...feedbackDoc.data() } as Feedback;
 }
 
+// export async function getLatestInterviews(
+//   params: GetLatestInterviewsParams
+// ): Promise<Interview[] | null> {
+//   const { userId, limit = 20 } = params;
+
+//   const interviews = await db
+//     .collection("interviews")
+//     .orderBy("createdAt", "desc")
+//     .where("finalized", "==", true)
+//     .where("userId", "!=", userId)
+//     .limit(limit)
+//     .get();
+
+//   return interviews.docs.map((doc) => ({
+//     id: doc.id,
+//     ...doc.data(),
+//   })) as Interview[];
+// }
+
+//suggested by chatgpt
 export async function getLatestInterviews(
   params: GetLatestInterviewsParams
 ): Promise<Interview[] | null> {
   const { userId, limit = 20 } = params;
 
-  const interviews = await db
+  // Fetch all (or a large number) and filter client-side
+  const snapshot = await db
     .collection("interviews")
     .orderBy("createdAt", "desc")
-    .where("finalized", "==", true)
-    .where("userId", "!=", userId)
-    .limit(limit)
+    .limit(limit * 5) // fetch extra
     .get();
 
-  return interviews.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Interview[];
+  const interviews = snapshot.docs
+    .map((doc) => {
+      const data = doc.data() as Interview;
+      const { id: _ignored, ...rest } = data as any;
+      return { id: doc.id, ...rest };
+    })
+    .filter(
+      (interview) => interview.userId !== userId && interview.finalized === true
+    )
+    .slice(0, limit);
+
+  return interviews;
 }
+
+
+
 
 export async function getInterviewsByUserId(
   userId: string
